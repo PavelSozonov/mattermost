@@ -1,0 +1,87 @@
+---
+- name: Assert that required variables are provided
+  ansible.builtin.assert:
+    that:
+      - mattermost_domain | length > 0
+      - mattermost_postgres_password | length > 0
+    fail_msg: >-
+      mattermost_domain and mattermost_postgres_password must be set
+      (via extra vars, inventory, or CI secrets)
+    quiet: true
+
+- name: Create base directory
+  ansible.builtin.file:
+    path: "{{ mattermost_base_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# The Mattermost container runs as UID/GID 2000.
+- name: Create Mattermost data directories
+  ansible.builtin.file:
+    path: "{{ mattermost_base_dir }}/volumes/mattermost/{{ item }}"
+    state: directory
+    owner: "2000"
+    group: "2000"
+    mode: "0750"
+  loop:
+    - config
+    - data
+    - logs
+    - plugins
+    - client
+    - client/plugins
+    - bleve-indexes
+
+# The postgres:alpine container runs as UID/GID 70.
+- name: Create PostgreSQL data directory
+  ansible.builtin.file:
+    path: "{{ mattermost_base_dir }}/volumes/postgres"
+    state: directory
+    owner: "70"
+    group: "70"
+    mode: "0700"
+
+- name: Render environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ mattermost_base_dir }}/.env"
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false  # contains the database password
+
+- name: Render Docker Compose definition
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ mattermost_base_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Copy Caddyfile
+  ansible.builtin.copy:
+    src: Caddyfile
+    dest: "{{ mattermost_base_dir }}/Caddyfile"
+    owner: root
+    group: root
+    mode: "0644"
+  when: mattermost_edge_enabled
+
+- name: Start or reconcile the stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ mattermost_base_dir }}"
+    state: present
+    remove_orphans: true
+    wait: true
+    wait_timeout: 300
+
+- name: Wait for the Mattermost API to respond
+  ansible.builtin.uri:
+    url: "http://{{ mattermost_bind_address }}:{{ mattermost_http_port }}/api/v4/system/ping"
+    status_code: 200
+  register: mattermost_ping
+  retries: 30
+  delay: 5
+  until: mattermost_ping.status == 200

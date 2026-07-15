@@ -1,0 +1,23 @@
+# Local Ansible state — real inventories contain host data and must never be committed
+inventories/local/
+*.retry
+.ansible/
+
+# Secrets and local environment
+.env
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+known_hosts*
+vault-password*
+extra_vars*.json
+
+# Python
+__pycache__/
+.venv/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store

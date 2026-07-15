@@ -1,0 +1,6 @@
+# Managed by Ansible — local edits will be overwritten on the next deploy.
+{$MM_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy mattermost:8065
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}

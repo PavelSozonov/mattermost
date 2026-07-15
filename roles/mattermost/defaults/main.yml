@@ -1,0 +1,39 @@
+---
+# Required. There are no safe defaults for these two — provide them via
+# extra vars, inventory group_vars, or CI secrets.
+mattermost_domain: ""
+# Must be URL-safe (it is embedded in the PostgreSQL connection string).
+# Generate with: openssl rand -hex 32
+mattermost_postgres_password: ""
+
+# Container images. Versions are pinned on purpose — bump them deliberately.
+# For Mattermost prefer Extended Support Releases (ESR).
+mattermost_image: mattermost/mattermost-team-edition
+mattermost_image_tag: "11.7.6"  # ESR, supported until 2027-05-15
+mattermost_postgres_image_tag: "16-alpine"
+mattermost_caddy_image_tag: "2-alpine"
+
+# Where the stack lives on the target host.
+mattermost_base_dir: /opt/mattermost
+
+# Database.
+mattermost_postgres_user: mmuser
+mattermost_postgres_db: mattermost
+
+# Built-in Caddy edge with automatic Let's Encrypt TLS on ports 80/443.
+# Keep disabled on hosts where another reverse proxy already owns those
+# ports; the app is then published on the loopback address below and an
+# existing proxy can forward to it.
+mattermost_edge_enabled: false
+
+# Where the Mattermost HTTP port is published on the host. This is the
+# reverse-proxy target when the edge is disabled.
+mattermost_bind_address: "127.0.0.1"
+mattermost_http_port: 8065
+
+mattermost_timezone: UTC
+
+# Resource caps sized for a small shared host (2 vCPU / 4 GB RAM).
+mattermost_app_mem_limit: 2g
+mattermost_postgres_mem_limit: 1g
+mattermost_caddy_mem_limit: 256m

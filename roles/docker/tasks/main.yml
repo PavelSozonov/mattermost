@@ -1,0 +1,73 @@
+---
+# The target may be a shared server with a working Docker Engine that other
+# services depend on. If both the engine and the Compose plugin are already
+# present, this role does nothing at all.
+
+- name: Check whether Docker Engine is already installed
+  ansible.builtin.command: docker --version
+  register: docker_engine_check
+  changed_when: false
+  failed_when: false
+
+- name: Check whether the Docker Compose plugin is already installed
+  ansible.builtin.command: docker compose version
+  register: docker_compose_check
+  changed_when: false
+  failed_when: false
+
+- name: Decide whether Docker needs to be installed
+  ansible.builtin.set_fact:
+    docker_install_required: "{{ docker_engine_check.rc != 0 or docker_compose_check.rc != 0 }}"
+
+- name: Install Docker Engine and Compose plugin from the official repository
+  when: docker_install_required
+  block:
+    - name: Install prerequisites
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+        state: present
+        update_cache: true
+
+    - name: Create APT keyring directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Download Docker APT signing key
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Add Docker APT repository
+      ansible.builtin.apt_repository:
+        repo: >-
+          deb [arch={{ docker_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc]
+          https://download.docker.com/linux/ubuntu {{ ansible_facts.distribution_release }} stable
+        filename: docker
+        state: present
+
+    - name: Install Docker packages
+      ansible.builtin.apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: true
+
+    - name: Enable and start the Docker service
+      ansible.builtin.systemd_service:
+        name: docker
+        enabled: true
+        state: started
+
+- name: Ensure the Docker service is running
+  ansible.builtin.systemd_service:
+    name: docker
+    state: started
