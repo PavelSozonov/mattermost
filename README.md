@@ -52,8 +52,10 @@ existing reverse proxy.
    scripts/bootstrap-github-secrets.sh --ssh-target <ssh-alias-or-host> --domain chat.example.com
    ```
 
-   Add `--edge true` if ports 80/443 on the server are free and you want the built-in
-   Caddy edge with automatic HTTPS.
+   Add `--user root` when the target is a plain hostname rather than an alias from
+   `~/.ssh/config` (otherwise your local username is assumed), and `--edge true` if
+   ports 80/443 on the server are free and you want the built-in Caddy edge with
+   automatic HTTPS.
 
 3. Deploy:
 
