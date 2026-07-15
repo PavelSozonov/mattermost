@@ -21,6 +21,7 @@ Ansible IaC that deploys a Mattermost stack (PostgreSQL + Mattermost Team Editio
   - `mattermost` — renders `/opt/mattermost` on the host (`.env` from `templates/env.j2`, `docker-compose.yml`, `Caddyfile`) and reconciles via `community.docker.docker_compose_v2`, then waits for `/api/v4/system/ping`.
 - Value flow: GitHub secrets → deploy workflow env → extra-vars JSON → role vars (`roles/mattermost/defaults/main.yml`) → `.env` on the host. The compose template references only `${VARS}` from `.env`; its single piece of Jinja logic is the conditional `caddy` service gated on `mattermost_edge_enabled`.
 - Edge toggle: `mattermost_edge_enabled=false` (default) publishes the app on `127.0.0.1:8065` for an existing host reverse proxy; `true` adds Caddy with Let's Encrypt on 80/443. Keep the default `false` — the real target host has another proxy owning those ports.
+- Reverse-proxy integration on the real host: the app additionally joins the external Docker network named by `mattermost_edge_external_network` (CI variable `MM_EDGE_EXTERNAL_NETWORK`, set to `edge`); the host's containerized Caddy reaches it there as `mattermost:8065`. PostgreSQL stays on the project-internal network only.
 
 ## Hard rules
 

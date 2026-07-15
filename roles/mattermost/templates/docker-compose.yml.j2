@@ -55,6 +55,11 @@ services:
     ports:
       - "${MM_BIND_ADDRESS}:${MM_PORT}:8065"
     mem_limit: ${APP_MEM_LIMIT}
+{% if mattermost_edge_external_network %}
+    networks:
+      - default
+      - edge
+{% endif %}
 {% if mattermost_edge_enabled %}
 
   caddy:
@@ -78,4 +83,12 @@ services:
 volumes:
   caddy-data:
   caddy-config:
+{% endif %}
+{% if mattermost_edge_external_network %}
+
+networks:
+  default:
+  edge:
+    external: true
+    name: {{ mattermost_edge_external_network }}
 {% endif %}

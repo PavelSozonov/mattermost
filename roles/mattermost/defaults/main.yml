@@ -31,6 +31,13 @@ mattermost_edge_enabled: false
 mattermost_bind_address: "127.0.0.1"
 mattermost_http_port: 8065
 
+# Name of an external Docker network to additionally attach the mattermost
+# service to. Use this when a containerized reverse proxy on the same host
+# (running on its own bridge network, where the host loopback is unreachable)
+# should reach the app as "mattermost:8065". Empty = don't attach. The
+# network is created idempotently if missing.
+mattermost_edge_external_network: ""
+
 mattermost_timezone: UTC
 
 # Resource caps sized for a small shared host (2 vCPU / 4 GB RAM).

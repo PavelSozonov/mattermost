@@ -94,6 +94,7 @@ and can be overridden per-host or via `--extra-vars`. The important ones:
 | `mattermost_domain` | — (required) | public FQDN, used for the site URL and TLS |
 | `mattermost_postgres_password` | — (required) | URL-safe DB password (`openssl rand -hex 32`) |
 | `mattermost_edge_enabled` | `false` | deploy the Caddy TLS edge on ports 80/443 |
+| `mattermost_edge_external_network` | `""` | external Docker network to join for a containerized reverse proxy |
 | `mattermost_bind_address` / `mattermost_http_port` | `127.0.0.1` / `8065` | where the app is published on the host (reverse-proxy target) |
 | `mattermost_image_tag` | pinned ESR | Mattermost version; bump deliberately |
 | `mattermost_base_dir` | `/opt/mattermost` | compose project and data location on the server |
@@ -114,9 +115,17 @@ see [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
 ### Running behind an existing reverse proxy
 
-With `mattermost_edge_enabled: false` (the default) nothing binds 80/443; point your
-existing proxy at `http://127.0.0.1:8065` and make sure it forwards WebSocket upgrades
-(for Caddy: a plain `reverse_proxy 127.0.0.1:8065` is enough).
+With `mattermost_edge_enabled: false` (the default) nothing binds 80/443. Two ways to
+wire up an existing proxy on the same host:
+
+- **Proxy runs on the host** (or with `network_mode: host`): point it at
+  `http://127.0.0.1:8065` and make sure it forwards WebSocket upgrades (for Caddy: a
+  plain `reverse_proxy 127.0.0.1:8065` is enough).
+- **Proxy runs in a container** on its own bridge network (host loopback unreachable):
+  set `mattermost_edge_external_network` to a shared external network name (in CI: the
+  `MM_EDGE_EXTERNAL_NETWORK` repository variable). The playbook creates the network if
+  missing and attaches the app to it; the proxy joins the same network and targets
+  `mattermost:8065`. Database traffic stays on the project's internal network.
 
 ## Operations
 

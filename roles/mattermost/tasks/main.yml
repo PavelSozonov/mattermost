@@ -69,6 +69,22 @@
     mode: "0644"
   when: mattermost_edge_enabled
 
+# The edge project creates this network idempotently on its side too; plain
+# `network create` (no custom options) never alters an existing network.
+- name: Check whether the external edge network exists
+  ansible.builtin.command: docker network inspect {{ mattermost_edge_external_network }}
+  register: mattermost_edge_network_check
+  changed_when: false
+  failed_when: false
+  when: mattermost_edge_external_network | length > 0
+
+- name: Create the external edge network
+  ansible.builtin.command: docker network create {{ mattermost_edge_external_network }}
+  changed_when: true
+  when:
+    - mattermost_edge_external_network | length > 0
+    - mattermost_edge_network_check.rc != 0
+
 - name: Start or reconcile the stack
   community.docker.docker_compose_v2:
     project_src: "{{ mattermost_base_dir }}"

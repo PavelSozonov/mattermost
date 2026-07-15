@@ -49,6 +49,7 @@ jobs:
           MM_DOMAIN: ${{ secrets.MM_DOMAIN }}
           MM_POSTGRES_PASSWORD: ${{ secrets.MM_POSTGRES_PASSWORD }}
           MM_EDGE_ENABLED: ${{ vars.MM_EDGE_ENABLED }}
+          MM_EDGE_EXTERNAL_NETWORK: ${{ vars.MM_EDGE_EXTERNAL_NETWORK }}
           ANSIBLE_HOST_KEY_CHECKING: "True"
         run: |
           umask 077
@@ -57,11 +58,13 @@ jobs:
             --arg password "$MM_POSTGRES_PASSWORD" \
             --arg port "${DEPLOY_PORT:-22}" \
             --arg edge "${MM_EDGE_ENABLED:-false}" \
+            --arg extnet "${MM_EDGE_EXTERNAL_NETWORK:-}" \
             '{
               mattermost_domain: $domain,
               mattermost_postgres_password: $password,
               ansible_port: ($port | tonumber),
-              mattermost_edge_enabled: ($edge == "true")
+              mattermost_edge_enabled: ($edge == "true"),
+              mattermost_edge_external_network: $extnet
             }' > "$RUNNER_TEMP/extra_vars.json"
           ansible-playbook site.yml \
             -i "${DEPLOY_HOST}," \
