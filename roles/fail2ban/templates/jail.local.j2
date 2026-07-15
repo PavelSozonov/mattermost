@@ -1,0 +1,17 @@
+# Managed by Ansible — local edits will be overwritten on the next deploy.
+[DEFAULT]
+ignoreip = {{ fail2ban_ignoreip | join(' ') }}
+bantime = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+bantime.increment = {{ fail2ban_bantime_increment | lower }}
+bantime.factor = {{ fail2ban_bantime_factor }}
+bantime.maxtime = {{ fail2ban_bantime_maxtime }}
+# Read auth events from journald; modern Ubuntu ships without rsyslog,
+# so /var/log/auth.log may not exist.
+backend = systemd
+
+[sshd]
+enabled = true
+mode = {{ fail2ban_sshd_mode }}
+port = {{ fail2ban_sshd_port }}

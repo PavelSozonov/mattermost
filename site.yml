@@ -3,5 +3,7 @@
   hosts: all
   become: true
   roles:
-    - docker
-    - mattermost
+    - role: fail2ban
+      when: fail2ban_enabled
+    - role: docker
+    - role: mattermost

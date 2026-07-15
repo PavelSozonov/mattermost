@@ -17,6 +17,7 @@ existing reverse proxy.
 | Mattermost | `mattermost/mattermost-team-edition` (pinned ESR) | app, published on `127.0.0.1:8065` |
 | PostgreSQL | `postgres:16-alpine` | internal network only, no published ports |
 | Caddy (optional) | `caddy:2-alpine` | TLS edge with automatic Let's Encrypt, ports 80/443 |
+| fail2ban | host package (not a container) | SSH brute-force protection with escalating bans |
 
 ```
                        ┌──────────────────────── target host ───────────────────────┐
@@ -96,6 +97,15 @@ and can be overridden per-host or via `--extra-vars`. The important ones:
 | `mattermost_base_dir` | `/opt/mattermost` | compose project and data location on the server |
 | `*_mem_limit` | 2g / 1g / 256m | container memory caps sized for a 4 GB host |
 
+SSH hardening lives in [`roles/fail2ban/defaults/main.yml`](roles/fail2ban/defaults/main.yml):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `fail2ban_enabled` | `true` | set to `false` if fail2ban on the host is managed elsewhere |
+| `fail2ban_maxretry` / `fail2ban_findtime` | `5` / `10m` | failed SSH auths from one IP that trigger a ban |
+| `fail2ban_bantime` (+ increment/factor/maxtime) | `1h`, ×2, cap `1w` | first ban duration, doubling for repeat offenders |
+| `fail2ban_ignoreip` | loopback only | IPs/CIDRs never banned (add your static IP if desired) |
+
 In CI these are supplied from GitHub Actions secrets (`MM_DOMAIN`,
 `MM_POSTGRES_PASSWORD`, `DEPLOY_*`) and the `MM_EDGE_ENABLED` repository variable —
 see [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
@@ -116,11 +126,18 @@ existing proxy at `http://127.0.0.1:8065` and make sure it forwards WebSocket up
   `docker exec postgres pg_dump -U mmuser mattermost | gzip > backup.sql.gz`
   and copy `volumes/mattermost/data` for uploaded files.
 - **Logs**: `docker compose -f /opt/mattermost/docker-compose.yml logs -f mattermost`.
+- **SSH bans**: `fail2ban-client status sshd` (counters), `fail2ban-client banned`
+  (current bans), `fail2ban-client unban <ip>` (release one IP).
 
 ## Security model
 
 - No secrets, hostnames, or domains in the repository — everything host-specific is
   a GitHub Actions secret; local inventories are gitignored.
+- SSH brute-force protection via fail2ban (systemd/journald backend, aggressive sshd
+  jail, escalating ban times). The role only manages its own drop-in in
+  `/etc/fail2ban/jail.d/` and never touches the ban database, so an existing
+  fail2ban setup and accumulated bans survive re-runs; if the ban policy is managed
+  by another tool, set `fail2ban_enabled: false`.
 - CI deploys with a pinned SSH host key (`ssh-keyscan` at bootstrap time,
   strict host-key checking on).
 - PostgreSQL is reachable only from the compose network; the app binds to loopback

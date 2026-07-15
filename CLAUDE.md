@@ -15,7 +15,8 @@ Ansible IaC that deploys a Mattermost stack (PostgreSQL + Mattermost Team Editio
 
 ## Architecture
 
-- `site.yml` applies two roles:
+- `site.yml` applies three roles:
+  - `fail2ban` — SSH brute-force protection (journald backend, aggressive sshd jail, escalating bans). Manages only its own drop-in in `/etc/fail2ban/jail.d/` and never touches the ban database; skippable via `fail2ban_enabled: false`.
   - `docker` — ensures Docker Engine + Compose plugin exist. If both are already present it does nothing; it must never disturb an existing engine (the target is a shared production server).
   - `mattermost` — renders `/opt/mattermost` on the host (`.env` from `templates/env.j2`, `docker-compose.yml`, `Caddyfile`) and reconciles via `community.docker.docker_compose_v2`, then waits for `/api/v4/system/ping`.
 - Value flow: GitHub secrets → deploy workflow env → extra-vars JSON → role vars (`roles/mattermost/defaults/main.yml`) → `.env` on the host. The compose template references only `${VARS}` from `.env`; its single piece of Jinja logic is the conditional `caddy` service gated on `mattermost_edge_enabled`.

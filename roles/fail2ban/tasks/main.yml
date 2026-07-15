@@ -1,0 +1,42 @@
+---
+# python3-systemd is required for backend=systemd but is only a Recommends
+# of the fail2ban package, so it is listed explicitly.
+- name: Install fail2ban and the systemd journal binding
+  ansible.builtin.apt:
+    name:
+      - fail2ban
+      - python3-systemd
+    state: present
+    install_recommends: false
+    update_cache: true
+    cache_valid_time: 3600
+
+# Restart-on-change only (via handler). The ban database in
+# /var/lib/fail2ban/ is never touched, so existing bans survive both the
+# restart and repeated runs of this role.
+- name: Render sshd jail drop-in
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: "{{ fail2ban_jail_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart fail2ban
+
+- name: Enable and start the fail2ban service
+  ansible.builtin.systemd_service:
+    name: fail2ban
+    enabled: true
+    state: started
+
+- name: Apply a pending restart before verifying
+  ansible.builtin.meta: flush_handlers
+
+# Fresh restarts can take a moment before the jail is queryable.
+- name: Verify the sshd jail is active
+  ansible.builtin.command: fail2ban-client status sshd
+  register: fail2ban_sshd_status
+  until: fail2ban_sshd_status.rc == 0
+  retries: 10
+  delay: 1
+  changed_when: false

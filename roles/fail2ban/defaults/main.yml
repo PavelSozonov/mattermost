@@ -1,0 +1,29 @@
+---
+# Set to false to skip SSH brute-force protection entirely (e.g. when the
+# host's fail2ban is managed by another tool).
+fail2ban_enabled: true
+
+# Drop-in file managed by this role. Other drop-ins in jail.d are left
+# untouched; fail2ban reads them in alphabetical order and later files win
+# on conflicting keys, so an existing site-specific policy file that sorts
+# after this one keeps precedence.
+fail2ban_jail_file: /etc/fail2ban/jail.d/mattermost.local
+
+# Ban policy: 5 failed SSH auths from one IP within a 10-minute window
+# trigger a 1-hour ban; repeat offenders double the duration each time
+# (1h -> 2h -> 4h -> ...) capped at 1 week.
+fail2ban_ignoreip:
+  - 127.0.0.1/8
+  - "::1"
+fail2ban_bantime: 1h
+fail2ban_findtime: 10m
+fail2ban_maxretry: 5
+fail2ban_bantime_increment: true
+fail2ban_bantime_factor: 2
+fail2ban_bantime_maxtime: 1w
+
+# Aggressive mode additionally catches banner-grab probes and protocol
+# mismatches; safe on a single-purpose server with key-only SSH.
+fail2ban_sshd_mode: aggressive
+# Change if sshd listens on a non-standard port.
+fail2ban_sshd_port: ssh
