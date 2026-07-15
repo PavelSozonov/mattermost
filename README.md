@@ -125,7 +125,7 @@ existing proxy at `http://127.0.0.1:8065` and make sure it forwards WebSocket up
   commit, re-run the deploy workflow. Compose recreates only changed containers.
 - **Re-deploy / reconcile**: the playbook is idempotent — re-run it any time.
 - **Backups**: application data lives in `/opt/mattermost/volumes/`. Dump the database with
-  `docker exec postgres pg_dump -U mmuser mattermost | gzip > backup.sql.gz`
+  `docker exec mattermost-postgres pg_dump -U mmuser mattermost | gzip > backup.sql.gz`
   and copy `volumes/mattermost/data` for uploaded files.
 - **Logs**: `docker compose -f /opt/mattermost/docker-compose.yml logs -f mattermost`.
 - **SSH bans**: `fail2ban-client status sshd` (counters), `fail2ban-client banned`

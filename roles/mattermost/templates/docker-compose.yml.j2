@@ -3,6 +3,7 @@
 services:
   postgres:
     image: postgres:${POSTGRES_IMAGE_TAG}
+    container_name: mattermost-postgres
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -27,6 +28,7 @@ services:
 
   mattermost:
     image: ${MATTERMOST_IMAGE}:${MATTERMOST_IMAGE_TAG}
+    container_name: mattermost
     restart: unless-stopped
     depends_on:
       postgres:
@@ -57,6 +59,7 @@ services:
 
   caddy:
     image: caddy:${CADDY_IMAGE_TAG}
+    container_name: mattermost-caddy
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
