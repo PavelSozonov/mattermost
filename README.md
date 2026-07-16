@@ -72,6 +72,12 @@ existing reverse proxy.
 
 Open `https://chat.example.com` and log in.
 
+Mobile push notifications for the official apps work out of the box via Mattermost's
+free [Test Push Notification Service](https://docs.mattermost.com/administration-guide/configure/push-notification-server-configuration-settings.html)
+(suitable for personal, non-commercial servers; no uptime SLA). Licensed
+Professional/Enterprise servers should switch to HPNS with
+`mattermost_push_notification_mode: hpns`.
+
 ## Local deployment (without CI)
 
 ```bash
@@ -97,6 +103,9 @@ and can be overridden per-host or via `--extra-vars`. The important ones:
 | `mattermost_edge_external_network` | `""` | external Docker network to join for a containerized reverse proxy |
 | `mattermost_bind_address` / `mattermost_http_port` | `127.0.0.1` / `8065` | where the app is published on the host (reverse-proxy target) |
 | `mattermost_image_tag` | pinned ESR | Mattermost version; bump deliberately |
+| `mattermost_push_notifications_enabled` | `true` | mobile push notifications for the official apps |
+| `mattermost_push_notification_mode` | `tpns` | `tpns` (free, no SLA), `hpns` (licensed servers), or `custom` |
+| `mattermost_push_notification_server` | `""` | push proxy URL, used only with the `custom` mode |
 | `mattermost_base_dir` | `/opt/mattermost` | compose project and data location on the server |
 | `*_mem_limit` | 2g / 1g / 256m | container memory caps sized for a 4 GB host |
 

@@ -40,6 +40,18 @@ mattermost_edge_external_network: ""
 
 mattermost_timezone: UTC
 
+# Mobile push notifications for the official Mattermost apps.
+#   tpns   — Test Push Notification Service (free; for non-commercial /
+#            personal servers; transport encryption but no uptime SLA)
+#   hpns   — Hosted Push Notification Service (requires a licensed
+#            Professional/Enterprise server; https://push-de.mattermost.com
+#            is the EU alternative — set it via the custom mode)
+#   custom — use mattermost_push_notification_server as-is (e.g. a
+#            self-hosted push proxy paired with custom-built mobile apps)
+mattermost_push_notifications_enabled: true
+mattermost_push_notification_mode: tpns
+mattermost_push_notification_server: ""
+
 # Resource caps sized for a small shared host (2 vCPU / 4 GB RAM).
 mattermost_app_mem_limit: 2g
 mattermost_postgres_mem_limit: 1g

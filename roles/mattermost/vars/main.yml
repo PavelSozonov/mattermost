@@ -1,0 +1,13 @@
+---
+# Official Mattermost push notification service endpoints (see
+# https://docs.mattermost.com/administration-guide/configure/push-notification-server-configuration-settings.html).
+# Not meant to be overridden — use mattermost_push_notification_mode: custom
+# with mattermost_push_notification_server instead.
+mattermost_push_notification_server_urls:
+  tpns: https://push-test.mattermost.com
+  hpns: https://push.mattermost.com
+
+mattermost_push_notification_server_effective: >-
+  {{ mattermost_push_notification_server
+     if mattermost_push_notification_mode == 'custom'
+     else mattermost_push_notification_server_urls[mattermost_push_notification_mode] }}

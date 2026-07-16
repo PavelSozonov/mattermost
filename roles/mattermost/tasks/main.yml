@@ -9,6 +9,18 @@
       (via extra vars, inventory, or CI secrets)
     quiet: true
 
+- name: Assert that the push notification configuration is consistent
+  ansible.builtin.assert:
+    that:
+      - mattermost_push_notification_mode in ['tpns', 'hpns', 'custom']
+      - >-
+        mattermost_push_notification_mode != 'custom'
+        or mattermost_push_notification_server | length > 0
+    fail_msg: >-
+      mattermost_push_notification_mode must be tpns, hpns, or custom;
+      the custom mode also requires mattermost_push_notification_server
+    quiet: true
+
 - name: Create base directory
   ansible.builtin.file:
     path: "{{ mattermost_base_dir }}"
