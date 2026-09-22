@@ -12,3 +12,5 @@
     - role: docker
       when: manage_host_baseline | default(true)
     - role: mattermost
+    - role: mattermost_backup
+      when: mattermost_backup_enabled | default(false)

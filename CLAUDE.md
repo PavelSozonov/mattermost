@@ -15,11 +15,12 @@ Ansible IaC that deploys a Mattermost stack (PostgreSQL + Mattermost Team Editio
 
 ## Architecture
 
-- `site.yml` applies three roles:
+- `site.yml` applies four roles:
   - `fail2ban` — SSH brute-force protection (journald backend, aggressive sshd jail, escalating bans). Manages only its own drop-in in `/etc/fail2ban/jail.d/` and never touches the ban database; skippable via `fail2ban_enabled: false`.
   - `docker` — ensures Docker Engine + Compose plugin exist. If both are already present it does nothing; it must never disturb an existing engine (the target is a shared production server).
   - `mattermost` — renders `/opt/mattermost` on the host (`.env` from `templates/env.j2`, `docker-compose.yml`, `Caddyfile`) and reconciles via `community.docker.docker_compose_v2`, then waits for `/api/v4/system/ping`.
 - Host layer: the `fail2ban` and `docker` roles run only when `manage_host_baseline` is true (default). On the real host the baseline is owned by a separate host-configuration repository, so the CI variable `MM_MANAGE_HOST_BASELINE` is `false` there — do not re-enable it, the two would fight over the same files.
+- `mattermost_backup` — optional (`mattermost_backup_enabled`, off by default): nightly timer running `/usr/local/sbin/mattermost-backup.sh` (pg_dump + data/config archive → S3 via system python3-boto3, prune after verified upload, inside the prefix only). Storage endpoint and bucket are secrets too: this repo is public.
 - Value flow: GitHub secrets → deploy workflow env → extra-vars JSON → role vars (`roles/mattermost/defaults/main.yml`) → `.env` on the host. The compose template references only `${VARS}` from `.env`; its single piece of Jinja logic is the conditional `caddy` service gated on `mattermost_edge_enabled`.
 - Edge toggle: `mattermost_edge_enabled=false` (default) publishes the app on `127.0.0.1:8065` for an existing host reverse proxy; `true` adds Caddy with Let's Encrypt on 80/443. Keep the default `false` — the real target host has another proxy owning those ports.
 - Reverse-proxy integration on the real host: the app additionally joins the external Docker network named by `mattermost_edge_external_network` (CI variable `MM_EDGE_EXTERNAL_NETWORK`, set to `edge`); the host's containerized Caddy reaches it there as `mattermost:8065`. PostgreSQL stays on the project-internal network only.

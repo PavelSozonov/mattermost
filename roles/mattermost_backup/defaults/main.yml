@@ -1,0 +1,21 @@
+---
+# Off by default: a template user has to opt in and provide storage.
+mattermost_backup_enabled: false
+
+# S3-compatible object storage. In CI all four come from secrets.
+mattermost_backup_s3_endpoint: ""
+mattermost_backup_s3_bucket: ""
+mattermost_backup_s3_region: ""
+mattermost_backup_s3_access_key: ""
+mattermost_backup_s3_secret_key: ""
+# Objects land under <prefix>/<timestamp>/; the prefix may be shared with
+# other backups in the same bucket, so pruning never leaves it.
+mattermost_backup_s3_prefix: mattermost
+# Objects under the prefix older than this are deleted after a successful
+# upload — never before, so a failing night does not eat the history.
+mattermost_backup_keep_days: 14
+
+# systemd OnCalendar expression.
+mattermost_backup_schedule: "*-*-* 02:20:00 UTC"
+# Local staging; only the latest pair is kept on the host.
+mattermost_backup_dir: /var/backups/mattermost

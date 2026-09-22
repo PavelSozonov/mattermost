@@ -1,0 +1,11 @@
+# Managed by Ansible — local edits will be overwritten on the next deploy.
+[Unit]
+Description=Nightly Mattermost backup
+
+[Timer]
+OnCalendar={{ mattermost_backup_schedule }}
+RandomizedDelaySec=5m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

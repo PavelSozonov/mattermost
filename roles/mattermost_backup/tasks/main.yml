@@ -1,0 +1,64 @@
+---
+- name: Assert that the backup storage is configured
+  ansible.builtin.assert:
+    that:
+      - mattermost_backup_s3_endpoint | length > 0
+      - mattermost_backup_s3_bucket | length > 0
+      - mattermost_backup_s3_access_key | length > 0
+      - mattermost_backup_s3_secret_key | length > 0
+    fail_msg: >-
+      mattermost_backup_enabled needs mattermost_backup_s3_endpoint, _bucket,
+      _access_key and _secret_key (via extra vars, inventory, or CI secrets)
+    quiet: true
+
+- name: Install the S3 client library
+  ansible.builtin.apt:
+    name: python3-boto3
+    state: present
+
+- name: Create the local staging directory
+  ansible.builtin.file:
+    path: "{{ mattermost_backup_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Render the backup environment file
+  ansible.builtin.template:
+    src: mattermost-backup.env.j2
+    dest: /etc/mattermost-backup.env
+    owner: root
+    group: root
+    mode: "0600"
+  diff: false  # contains the storage credentials
+  no_log: true
+
+- name: Install the backup script
+  ansible.builtin.copy:
+    src: mattermost-backup.sh
+    dest: /usr/local/sbin/mattermost-backup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the backup unit and timer
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - mattermost-backup.service
+    - mattermost-backup.timer
+  notify: Reload systemd
+
+- name: Apply a pending systemd reload before enabling the timer
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable the backup timer
+  ansible.builtin.systemd_service:
+    name: mattermost-backup.timer
+    enabled: true
+    state: started
