@@ -57,6 +57,12 @@ jobs:
           MM_EDGE_ENABLED: ${{ vars.MM_EDGE_ENABLED }}
           MM_EDGE_EXTERNAL_NETWORK: ${{ vars.MM_EDGE_EXTERNAL_NETWORK }}
           MM_MANAGE_HOST_BASELINE: ${{ vars.MM_MANAGE_HOST_BASELINE }}
+          MM_BACKUP_ENABLED: ${{ vars.MM_BACKUP_ENABLED }}
+          MM_BACKUP_S3_ENDPOINT: ${{ secrets.MM_BACKUP_S3_ENDPOINT }}
+          MM_BACKUP_S3_BUCKET: ${{ secrets.MM_BACKUP_S3_BUCKET }}
+          MM_BACKUP_S3_REGION: ${{ secrets.MM_BACKUP_S3_REGION }}
+          MM_BACKUP_S3_ACCESS_KEY: ${{ secrets.MM_BACKUP_S3_ACCESS_KEY }}
+          MM_BACKUP_S3_SECRET_KEY: ${{ secrets.MM_BACKUP_S3_SECRET_KEY }}
           MODE: ${{ inputs.mode }}
           ANSIBLE_HOST_KEY_CHECKING: "True"
         run: |
@@ -68,13 +74,25 @@ jobs:
             --arg edge "${MM_EDGE_ENABLED:-false}" \
             --arg extnet "${MM_EDGE_EXTERNAL_NETWORK:-}" \
             --arg baseline "${MM_MANAGE_HOST_BASELINE:-true}" \
+            --arg backup "${MM_BACKUP_ENABLED:-false}" \
+            --arg s3_endpoint "${MM_BACKUP_S3_ENDPOINT:-}" \
+            --arg s3_bucket "${MM_BACKUP_S3_BUCKET:-}" \
+            --arg s3_region "${MM_BACKUP_S3_REGION:-}" \
+            --arg s3_access "${MM_BACKUP_S3_ACCESS_KEY:-}" \
+            --arg s3_secret "${MM_BACKUP_S3_SECRET_KEY:-}" \
             '{
               mattermost_domain: $domain,
               mattermost_postgres_password: $password,
               ansible_port: ($port | tonumber),
               mattermost_edge_enabled: ($edge == "true"),
               mattermost_edge_external_network: $extnet,
-              manage_host_baseline: ($baseline != "false")
+              manage_host_baseline: ($baseline != "false"),
+              mattermost_backup_enabled: ($backup == "true"),
+              mattermost_backup_s3_endpoint: $s3_endpoint,
+              mattermost_backup_s3_bucket: $s3_bucket,
+              mattermost_backup_s3_region: $s3_region,
+              mattermost_backup_s3_access_key: $s3_access,
+              mattermost_backup_s3_secret_key: $s3_secret
             }' > "$RUNNER_TEMP/extra_vars.json"
           check_args=()
           if [ "$MODE" != apply ]; then

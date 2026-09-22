@@ -160,9 +160,16 @@ changes production.
 - **Re-deploy / reconcile**: the playbook is idempotent — re-run it any time.
 - **Drift check**: `gh workflow run deploy.yml -f mode=check` — expected result is
   no changes.
-- **Backups**: application data lives in `/opt/mattermost/volumes/`. Dump the database with
-  `docker exec mattermost-postgres pg_dump -U mmuser mattermost | gzip > backup.sql.gz`
-  and copy `volumes/mattermost/data` for uploaded files.
+- **Backups**: the optional `mattermost_backup` role (`mattermost_backup_enabled: true`;
+  in CI the `MM_BACKUP_ENABLED` variable plus `MM_BACKUP_S3_*` secrets) installs a
+  nightly systemd timer that takes a custom-format `pg_dump` (checked with
+  `pg_restore --list`) and a `tar.gz` of `volumes/mattermost/{data,config}`, uploads
+  both to S3-compatible storage under `<prefix>/<timestamp>/` with a size check, and
+  only then deletes objects under the prefix older than `mattermost_backup_keep_days`
+  (14). `/var/backups/mattermost/.last-success` holds the time of the last good run.
+  Run one by hand with `systemctl start mattermost-backup.service`. Restore:
+  `pg_restore -U mmuser -d mattermost --clean` from `db.dump` into the postgres
+  container, and unpack `files.tar.gz` into `volumes/mattermost/` with the stack stopped.
 - **Logs**: `docker compose -f /opt/mattermost/docker-compose.yml logs -f mattermost`.
 - **SSH bans**: `fail2ban-client status sshd` (counters), `fail2ban-client banned`
   (current bans), `fail2ban-client unban <ip>` (release one IP).
