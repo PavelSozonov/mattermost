@@ -62,3 +62,7 @@
     name: mattermost-backup.timer
     enabled: true
     state: started
+  # On the first run in check mode the unit file does not exist yet (the task
+  # that installs it only reported "changed"), so systemd cannot find it.
+  # That is not a real failure; a real run installs the file first.
+  ignore_errors: "{{ ansible_check_mode }}"
