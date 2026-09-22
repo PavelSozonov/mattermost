@@ -3,6 +3,12 @@ name: Deploy
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "check = dry run with diff (changes nothing); apply = deploy"
+        type: choice
+        options: [check, apply]
+        default: check
 
 permissions:
   contents: read
@@ -50,6 +56,8 @@ jobs:
           MM_POSTGRES_PASSWORD: ${{ secrets.MM_POSTGRES_PASSWORD }}
           MM_EDGE_ENABLED: ${{ vars.MM_EDGE_ENABLED }}
           MM_EDGE_EXTERNAL_NETWORK: ${{ vars.MM_EDGE_EXTERNAL_NETWORK }}
+          MM_MANAGE_HOST_BASELINE: ${{ vars.MM_MANAGE_HOST_BASELINE }}
+          MODE: ${{ inputs.mode }}
           ANSIBLE_HOST_KEY_CHECKING: "True"
         run: |
           umask 077
@@ -59,14 +67,22 @@ jobs:
             --arg port "${DEPLOY_PORT:-22}" \
             --arg edge "${MM_EDGE_ENABLED:-false}" \
             --arg extnet "${MM_EDGE_EXTERNAL_NETWORK:-}" \
+            --arg baseline "${MM_MANAGE_HOST_BASELINE:-true}" \
             '{
               mattermost_domain: $domain,
               mattermost_postgres_password: $password,
               ansible_port: ($port | tonumber),
               mattermost_edge_enabled: ($edge == "true"),
-              mattermost_edge_external_network: $extnet
+              mattermost_edge_external_network: $extnet,
+              manage_host_baseline: ($baseline != "false")
             }' > "$RUNNER_TEMP/extra_vars.json"
-          ansible-playbook site.yml \
+          check_args=()
+          if [ "$MODE" != apply ]; then
+            # The .env task sets diff: false, so the database password never
+            # reaches the (public) job log.
+            check_args=(--check --diff)
+          fi
+          ansible-playbook site.yml "${check_args[@]}" \
             -i "${DEPLOY_HOST}," \
             -u "$DEPLOY_USER" \
             --private-key "$HOME/.ssh/deploy_key" \

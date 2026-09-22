@@ -57,10 +57,10 @@ existing reverse proxy.
    ports 80/443 on the server are free and you want the built-in Caddy edge with
    automatic HTTPS.
 
-3. Deploy:
+3. Deploy (a bare dispatch is a dry run, see [Dry run](#dry-run)):
 
    ```bash
-   gh workflow run deploy.yml && gh run watch
+   gh workflow run deploy.yml -f mode=apply && gh run watch
    ```
 
 4. Create the first admin account (open signup is not enabled):
@@ -136,12 +136,30 @@ wire up an existing proxy on the same host:
   missing and attaches the app to it; the proxy joins the same network and targets
   `mattermost:8065`. Database traffic stays on the project's internal network.
 
+### Host managed by another tool
+
+If the server's own baseline (Docker Engine, fail2ban, SSH access) is owned by a
+separate host-configuration tool, set `manage_host_baseline: false` (in CI: the
+`MM_MANAGE_HOST_BASELINE` repository variable set to `false`). The playbook then
+deploys only the Mattermost stack and leaves the host layer alone. Without it the
+two tools would fight: the other removes this playbook's fail2ban drop-in, and
+every deploy puts it back.
+
+### Dry run
+
+`gh workflow run deploy.yml -f mode=check` runs the playbook with `--check --diff`
+and changes nothing: it shows whether the server still matches the repository.
+`mode=apply` deploys. The dry run is the default, so a bare dispatch never
+changes production.
+
 ## Operations
 
 - **Upgrade Mattermost**: bump `mattermost_image_tag` (prefer
   [ESR versions](https://docs.mattermost.com/product-overview/release-policy.html)),
   commit, re-run the deploy workflow. Compose recreates only changed containers.
 - **Re-deploy / reconcile**: the playbook is idempotent — re-run it any time.
+- **Drift check**: `gh workflow run deploy.yml -f mode=check` — expected result is
+  no changes.
 - **Backups**: application data lives in `/opt/mattermost/volumes/`. Dump the database with
   `docker exec mattermost-postgres pg_dump -U mmuser mattermost | gzip > backup.sql.gz`
   and copy `volumes/mattermost/data` for uploaded files.
