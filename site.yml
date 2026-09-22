@@ -3,7 +3,12 @@
   hosts: all
   become: true
   roles:
+    # Host-level roles. Set manage_host_baseline: false when another tool
+    # owns the host itself (Docker Engine, fail2ban): the two would fight
+    # over the same files, and this playbook would restore what the other
+    # removes on every deploy.
     - role: fail2ban
-      when: fail2ban_enabled
+      when: (manage_host_baseline | default(true)) and fail2ban_enabled
     - role: docker
+      when: manage_host_baseline | default(true)
     - role: mattermost
