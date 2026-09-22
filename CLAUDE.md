@@ -30,4 +30,5 @@ Ansible IaC that deploys a Mattermost stack (PostgreSQL + Mattermost Team Editio
 - This repo is public. Real hostnames, IPs, SSH aliases, key paths, and the real domain must never appear in code, docs, examples, or commit messages — they live only in GitHub Actions secrets/variables and gitignored `inventories/local/`.
 - The target is a production server running unrelated services. Change it only through the playbook — no ad-hoc `docker`/`apt` commands over SSH.
 - Versions are pinned everywhere (container images, pre-commit hooks); upgrades are deliberate bumps. For Mattermost prefer ESR releases.
+- Everything written here is in English: docs, comments, full commit messages (subject and body), pull request titles and descriptions, and PR comments. This repo is public.
 - Conventional commit messages; do not add a `Co-Authored-By` trailer.
