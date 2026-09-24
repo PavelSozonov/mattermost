@@ -25,7 +25,20 @@ docker exec "${PG_CONTAINER}" pg_dump -U "${PG_USER}" -d "${PG_DB}" -Fc > "${STA
 docker exec -i "${PG_CONTAINER}" pg_restore --list < "${STAGE}/db.dump" > /dev/null
 
 log "archiving data and config"
-tar -C "${MM_BASE_DIR}/volumes/mattermost" -czf "${STAGE}/files.tar.gz" data config
+# Mattermost keeps running while its files are archived, so GNU tar can find a
+# file changing under it. It then exits 1 ("file changed as we read it") and
+# still writes the archive; under errexit that alone failed a whole night's
+# backup. Exit 1 is accepted, anything higher is a real error.
+tar_rc=0
+tar -C "${MM_BASE_DIR}/volumes/mattermost" --warning=no-file-changed \
+  -czf "${STAGE}/files.tar.gz" data config || tar_rc=$?
+if (( tar_rc > 1 )); then
+  log "tar failed with exit ${tar_rc}"
+  rm -rf "${STAGE}"
+  exit "${tar_rc}"
+fi
+# An archive tar cannot list is not a backup either.
+tar -tzf "${STAGE}/files.tar.gz" > /dev/null
 
 log "uploading to s3://${S3_BUCKET}/${S3_PREFIX}/${TS}/"
 STAGE="${STAGE}" TS="${TS}" python3 - <<'PY'
