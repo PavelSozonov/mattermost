@@ -18,7 +18,7 @@ repos:
       - id: yamllint
 
   - repo: https://github.com/ansible/ansible-lint
-    rev: v26.6.0
+    rev: v26.9.0
     hooks:
       - id: ansible-lint
 
@@ -33,6 +33,6 @@ repos:
       - id: actionlint
 
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.30.0
+    rev: v8.30.1
     hooks:
       - id: gitleaks
