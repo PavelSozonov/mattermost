@@ -36,34 +36,33 @@ existing reverse proxy.
 - **Target server**: Ubuntu 24.04, SSH access with a key, root or passwordless sudo.
   Docker and the Compose plugin are installed automatically if missing (an existing
   installation is left untouched).
-- **Your machine**: `gh` (authenticated), `ssh` access to the server. Ansible is only
-  needed for local runs — the recommended path deploys from GitHub Actions.
+- **Your machine**: `ssh` access to the server (root or passwordless sudo), `python3`
+  and Ansible (see [Deployment](#deployment)).
 - **DNS**: an A/AAAA record for your Mattermost domain pointing at the server.
 
-## Quick start (deploy from GitHub Actions)
+## Quick start
 
-1. Fork or clone this repository and push it to GitHub.
-
-2. Upload deployment secrets (SSH endpoint, host key, domain, generated DB password)
-   to the repository — values are read from your local SSH config and never touch
-   the working tree:
+1. Clone this repository and install Ansible:
 
    ```bash
-   scripts/bootstrap-github-secrets.sh --ssh-target <ssh-alias-or-host> --domain chat.example.com
+   python3 -m pip install "ansible-core>=2.17,<2.19"
+   ansible-galaxy collection install -r requirements.yml
    ```
 
-   Add `--user root` when the target is a plain hostname rather than an alias from
-   `~/.ssh/config` (otherwise your local username is assumed), and `--edge true` if
-   ports 80/443 on the server are free and you want the built-in Caddy edge with
-   automatic HTTPS.
-
-3. Deploy (a bare dispatch is a dry run, see [Dry run](#dry-run)):
+2. Deploy from your own machine over your own SSH access. A deploy is an
+   operator action: there is no CI deploy key, nothing in GitHub can reach the
+   server. Start with a dry run (see [Deployment](#deployment)):
 
    ```bash
-   gh workflow run deploy.yml -f mode=apply && gh run watch
+   scripts/deploy-local.sh --host <server> --mode check
+   scripts/deploy-local.sh --host <server> --mode apply
    ```
 
-4. Create the first admin account (open signup is not enabled):
+   On a first install export `MM_DOMAIN` (the public FQDN) and
+   `MM_POSTGRES_PASSWORD` (for example `openssl rand -hex 32`) first; afterwards the
+   script reads both from `/opt/mattermost/.env` on the server.
+
+3. Create the first admin account (open signup is not enabled):
 
    ```bash
    ssh <server> docker exec mattermost mmctl --local user create \
@@ -78,15 +77,38 @@ free [Test Push Notification Service](https://docs.mattermost.com/administration
 Professional/Enterprise servers should switch to HPNS with
 `mattermost_push_notification_mode: hpns`.
 
-## Local deployment (without CI)
+## Deployment
+
+Deployment runs from the operator's machine with the same playbook (`site.yml`)
+over the operator's own SSH access. `scripts/deploy-local.sh` wraps the
+`ansible-playbook` call:
 
 ```bash
-python3 -m pip install "ansible-core>=2.17,<2.19"
-ansible-galaxy collection install -r requirements.yml
+# dry run: --check --diff, changes nothing
+scripts/deploy-local.sh --host <server> --mode check
+# deploy
+scripts/deploy-local.sh --host <server> --mode apply
+```
 
+Options: `--user` (default `root`), `--port` (default `22`), `--edge true|false`,
+`--edge-network <name>` (external Docker network shared with an existing proxy, see
+below) and `--no-baseline` (do not manage the host baseline, see below).
+
+The script reads the domain and the database password from the server's
+`/opt/mattermost/.env` (or from `MM_DOMAIN` and `MM_POSTGRES_PASSWORD` in the
+environment), writes them to a `0600` temporary extra-vars file that is removed on
+exit, and then runs:
+
+```bash
+ansible-playbook site.yml [--check --diff] -i "<server>," -u <user> -e @<extra-vars.json>
+```
+
+The `.env` task sets `diff: false`, so the password never reaches the terminal.
+Without the script, use your own inventory instead:
+
+```bash
 cp -r inventories/example inventories/local   # gitignored; put real values here
 $EDITOR inventories/local/hosts.yml
-
 ansible-playbook site.yml -i inventories/local/hosts.yml
 ```
 
@@ -118,9 +140,8 @@ SSH hardening lives in [`roles/fail2ban/defaults/main.yml`](roles/fail2ban/defau
 | `fail2ban_bantime` (+ increment/factor/maxtime) | `1h`, ×2, cap `1w` | first ban duration, doubling for repeat offenders |
 | `fail2ban_ignoreip` | loopback only | IPs/CIDRs never banned (add your static IP if desired) |
 
-In CI these are supplied from GitHub Actions secrets (`MM_DOMAIN`,
-`MM_POSTGRES_PASSWORD`, `DEPLOY_*`) and the `MM_EDGE_ENABLED` repository variable —
-see [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
+`scripts/deploy-local.sh` passes the domain and the database password as extra vars
+(see [Deployment](#deployment)).
 
 ### Running behind an existing reverse proxy
 
@@ -131,35 +152,35 @@ wire up an existing proxy on the same host:
   `http://127.0.0.1:8065` and make sure it forwards WebSocket upgrades (for Caddy: a
   plain `reverse_proxy 127.0.0.1:8065` is enough).
 - **Proxy runs in a container** on its own bridge network (host loopback unreachable):
-  set `mattermost_edge_external_network` to a shared external network name (in CI: the
-  `MM_EDGE_EXTERNAL_NETWORK` repository variable). The playbook creates the network if
+  set `mattermost_edge_external_network` to a shared external network name (script:
+  `--edge-network`). The playbook creates the network if
   missing and attaches the app to it; the proxy joins the same network and targets
   `mattermost:8065`. Database traffic stays on the project's internal network.
 
 ### Host managed by another tool
 
 If the server's own baseline (Docker Engine, fail2ban, SSH access) is owned by a
-separate host-configuration tool, set `manage_host_baseline: false` (in CI: the
-`MM_MANAGE_HOST_BASELINE` repository variable set to `false`). The playbook then
+separate host-configuration tool, set `manage_host_baseline: false` (script:
+`--no-baseline`). The playbook then
 deploys only the Mattermost stack and leaves the host layer alone. Without it the
 two tools would fight: the other removes this playbook's fail2ban drop-in, and
 every deploy puts it back.
 
 ### Dry run
 
-`gh workflow run deploy.yml -f mode=check` runs the playbook with `--check --diff`
-and changes nothing: it shows whether the server still matches the repository.
-`mode=apply` deploys. The dry run is the default, so a bare dispatch never
-changes production.
+`scripts/deploy-local.sh --host <server> --mode check` runs the playbook with
+`--check --diff` and changes nothing: it shows whether the server still matches the
+repository. `--mode apply` deploys. The dry run is the default, so a bare invocation
+never changes production.
 
 ## Operations
 
 - **Upgrade Mattermost**: bump `mattermost_image_tag` (prefer
   [ESR versions](https://docs.mattermost.com/product-overview/release-policy.html)),
-  commit, re-run the deploy workflow. Compose recreates only changed containers.
+  commit, run the deploy script again. Compose recreates only changed containers.
 - **Re-deploy / reconcile**: the playbook is idempotent — re-run it any time.
-- **Drift check**: `gh workflow run deploy.yml -f mode=check` — expected result is
-  no changes.
+- **Drift check**: `scripts/deploy-local.sh --host <server> --mode check` — expected
+  result is no changes.
 - **Backups**: application data lives in `/opt/mattermost/volumes/`. Dump the database with
   `docker exec mattermost-postgres pg_dump -U mmuser mattermost | gzip > backup.sql.gz`
   and copy `volumes/mattermost/data` for uploaded files.
@@ -170,14 +191,15 @@ changes production.
 ## Security model
 
 - No secrets, hostnames, or domains in the repository — everything host-specific is
-  a GitHub Actions secret; local inventories are gitignored.
+  kept out of the repository; local inventories are gitignored.
 - SSH brute-force protection via fail2ban (systemd/journald backend, aggressive sshd
   jail, escalating ban times). The role only manages its own drop-in in
   `/etc/fail2ban/jail.d/` and never touches the ban database, so an existing
   fail2ban setup and accumulated bans survive re-runs; if the ban policy is managed
   by another tool, set `fail2ban_enabled: false`.
-- CI deploys with a pinned SSH host key (`ssh-keyscan` at bootstrap time,
-  strict host-key checking on).
+- No CI deploy credential exists: deploys run from the operator's machine with the
+  operator's own SSH access and strict host-key checking, so a leaked repository
+  setting or a compromised workflow cannot reach the server.
 - PostgreSQL is reachable only from the compose network; the app binds to loopback
   unless the TLS edge is enabled.
 - Containers run with `no-new-privileges`, PID limits, memory caps, and a read-only
