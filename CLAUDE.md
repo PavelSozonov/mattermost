@@ -8,7 +8,7 @@ Ansible IaC that deploys a Mattermost stack (PostgreSQL + Mattermost Team Editio
 
 ## Commands
 
-- `pre-commit run --all-files` — the full lint suite (yamllint, ansible-lint, shellcheck, actionlint, gitleaks). CI runs exactly this; when changing checks, keep `.pre-commit-config.yaml` and `.github/workflows/ci.yml` in sync.
+- `pre-commit run --all-files` — the full lint suite (yamllint, ansible-lint, shellcheck, actionlint, gitleaks). CI runs the same hooks: on a pull request on the PR's files only, on a push to `main` on all files; when changing checks, keep `.pre-commit-config.yaml` and `.github/workflows/ci.yml` in sync.
 - `ansible-playbook --syntax-check -i inventories/example/hosts.yml site.yml` — requires `ansible-core` and `ansible-galaxy collection install -r requirements.yml`.
 - `scripts/deploy-local.sh --host <server> --mode check` — dry run against the real server (`--check --diff`, the default mode); `--mode apply` deploys. Runs over the operator's own SSH access.
 
