@@ -13,6 +13,9 @@ jobs:
   pre-commit:
     name: Lint (pre-commit)
     runs-on: ubuntu-latest
+    # Bounds below: about 10x the slowest of the last 8 green runs (pre-commit
+    # 57 s, syntax 59 s, gitleaks 9 s, 2026-10-20) with room for a cold cache.
+    timeout-minutes: 15
     steps:
       # Depth 2: on a pull_request the hooks run on the PR's files, the merge
       # commit against its first parent (step "Run checks").
@@ -53,6 +56,7 @@ jobs:
   syntax-check:
     name: Ansible syntax check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -73,6 +77,7 @@ jobs:
   secret-scan:
     name: Secret scan (gitleaks)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       GITLEAKS_VERSION: "8.30.0"
     steps:
@@ -87,8 +92,9 @@ jobs:
           base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
           archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           cd /tmp
-          curl -fsSLO "${base}/${archive}"
-          curl -fsSLO "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          curl -fsSLO --connect-timeout 10 --max-time 120 --retry 3 "${base}/${archive}"
+          curl -fsSLO --connect-timeout 10 --max-time 120 --retry 3 \
+            "${base}/gitleaks_${GITLEAKS_VERSION}_checksums.txt"
           grep " ${archive}\$" "gitleaks_${GITLEAKS_VERSION}_checksums.txt" | sha256sum -c -
           tar -xzf "${archive}" gitleaks
 
