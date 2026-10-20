@@ -97,10 +97,24 @@
     - mattermost_edge_external_network | length > 0
     - mattermost_edge_network_check.rc != 0
 
+# `docker compose up` has no limit on the image pull it performs, so a
+# stalled registry would hang the deploy indefinitely. Missing images are
+# pulled in a separate, time-bounded step first. The policy matches what `up`
+# does on its own (an image is pulled only when absent), so a tag that moved
+# upstream (postgres 16-alpine) does not recreate a running service.
+- name: Pull missing images
+  community.docker.docker_compose_v2_pull:
+    project_src: "{{ mattermost_base_dir }}"
+    policy: missing
+  async: "{{ mattermost_image_pull_timeout }}"
+  poll: 10
+
 - name: Start or reconcile the stack
   community.docker.docker_compose_v2:
     project_src: "{{ mattermost_base_dir }}"
     state: present
+    # Images are already present after the bounded pull above.
+    pull: missing
     remove_orphans: true
     wait: true
     wait_timeout: 300

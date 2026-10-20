@@ -125,6 +125,7 @@ and can be overridden per-host or via `--extra-vars`. The important ones:
 | `mattermost_edge_external_network` | `""` | external Docker network to join for a containerized reverse proxy |
 | `mattermost_bind_address` / `mattermost_http_port` | `127.0.0.1` / `8065` | where the app is published on the host (reverse-proxy target) |
 | `mattermost_image_tag` | pinned ESR | Mattermost version; bump deliberately |
+| `mattermost_image_pull_timeout` | `900` | seconds allowed for pulling missing images; a stalled registry fails the deploy instead of hanging it |
 | `mattermost_push_notifications_enabled` | `true` | mobile push notifications for the official apps |
 | `mattermost_push_notification_mode` | `tpns` | `tpns` (free, no SLA), `hpns` (licensed servers), or `custom` |
 | `mattermost_push_notification_server` | `""` | push proxy URL, used only with the `custom` mode |
