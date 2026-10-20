@@ -13,6 +13,10 @@ mattermost_image_tag: "11.7.11"  # ESR, supported until 2027-05-15
 mattermost_postgres_image_tag: "16-alpine"
 mattermost_caddy_image_tag: "2-alpine"
 
+# Upper bound, in seconds, for pulling missing images before the stack is
+# reconciled. A stalled registry fails the deploy instead of hanging it.
+mattermost_image_pull_timeout: 900
+
 # Where the stack lives on the target host.
 mattermost_base_dir: /opt/mattermost
 
